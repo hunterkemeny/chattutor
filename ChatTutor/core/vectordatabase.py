@@ -1,6 +1,8 @@
 import chromadb
 from chromadb.utils import embedding_functions
 from typing import List
+from utils.hash import get_hash
+from nice_functions import pprint
 from core.definitions import Text
 from deeplake.core.vectorstore import VectorStore
 import openai
@@ -77,6 +79,22 @@ class VectorDatabase:
         else:
             self.client = chromadb.PersistentClient(path=self.path)
 
+    def simple_gpt(self):
+        docs = self.datasource.get(include=["metadatas"]  )
+        metadatas = docs["metadatas"]
+        documents = {}
+        for metadata in metadatas:
+            title =         metadata.get("title", "")
+            published =     metadata.get("published", "")
+            doc =           metadata.get("doc", "")
+            key =           str({title, published, doc})
+            metadata.pop("chunk", None)
+            metadata.pop("page", None)
+            metadata.pop("name", None)
+            documents[key] = metadata
+        return list(documents.values())
+
+
     def load_datasource(self, name):
         """Loading the appropriate data source based on the database provider"""
         if self.db_provider == "chroma":
@@ -146,15 +164,12 @@ class VectorDatabase:
         Args:
             texts (List[Text]): Texts to add to database
         """
-        count = self.datasource.count()
-        ids = [str(i) for i in range(count, count + len(texts))]
-        print("ids:", ids)
-        print("texts", texts)
-        print(texts[0].doc.docname)
+        pprint("add_texts_chroma", rf"adding {len(texts)} pieces of text...")
+        pprint("collection name", self.datasource.name)
         self.datasource.add(
-            ids=ids,
-            metadatas=[{"doc": text.doc.docname} for text in texts],
-            documents=[text.text for text in texts],
+            ids=        [get_hash(text.get_text())  for text in texts],
+            metadatas=  [text.get_metadata() for text in texts],
+            documents=[ text.get_text() for text in texts],
         )
 
     def query(self, prompt, n_results, from_doc, metadatas=False, distances=False):
