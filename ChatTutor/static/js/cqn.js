@@ -50,6 +50,51 @@ messageInput.addEventListener('input', (event) => {
   clear.disabled = !(messageInput.value.length === 0 );
 })
 
+function isQueueEmpty(){
+  const queue_status = document.getElementById("queue_status");
+  return queue_status.innerHTML === ""
+}
+
+async function getDocsFromCollection(){
+  const collectionMameDoc = document.getElementById("collection_name_doc");
+  let data = {
+    collection_name: "cqn_reports"
+  }
+  let response = await fetch('/get_doc_list', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)})
+  let res_json = await response.json()
+
+  let innerHTML = ""
+  for (let doc of res_json){
+    innerHTML+=`<a href='/cqn/${data.collection_name}/${doc.doc}'><b>${doc.dockey}</b></a> - ${doc.title} - <a href='/delete_doc_from_collection/cqn_reports/${doc.doc}'>delete</a><br>`
+  }
+  collectionMameDoc.innerHTML = innerHTML
+}
+
+async function getQueueStatus(){
+  let response = await fetch('/get_queue_progress')
+  let progress = await response.json()
+  const queue_status = document.getElementById("queue_status");
+  let new_html = ""
+  if (progress[0] === progress[1]){
+    new_html = ""
+  }else{
+    new_html = `(progress bar - ${progress[0]}/${progress[1]})`
+  }
+  if (queue_status.innerHTML != new_html){
+    getDocsFromCollection()
+  }
+  queue_status.innerHTML = new_html
+  setTimeout(getQueueStatus, 5000)
+}
+
+window.addEventListener('load', function() {
+  getQueueStatus()
+  getDocsFromCollection()
+})
+
+
+
+
 stopGenButton.style.display = 'none'
 // Listen for windoe resize to move the 'theme toggle button
 window.addEventListener('resize', windowIsResizing)
@@ -318,22 +363,19 @@ function fetchClearCollection(collname) {
 
 
 function queryGPT(fromuploaded=false, uploaded_collection_name="test_embedding") {
-  let collection_name = "test_embedding"
-  let selected_collection_name = "test_embedding"
-  // if (selectUploadedCollection && !selectUploadedCollection.options[ selectUploadedCollection.selectedIndex ]) {
-  //   alert("Please upload some files for the tutor to learn from! Click on menu!")
-  //   return
-  // }
-  if (selectUploadedCollection.options.length > 0) {
-    selected_collection_name = selectUploadedCollection.options[ selectUploadedCollection.selectedIndex ].value
-  }
+  const collection_name = document.getElementById("collection_name");
   const args = {
     "conversation": conversation,
     "multiple": true,
-    "collection": [collection_name, selected_collection_name]
+    "collection": [collection_name.value]
   }
-  if (embed_mode) args.from_doc = original_file
-  if (READ_FROM_DOC != null) args.from_doc = READ_FROM_DOC
+
+  const from_doc =  document.getElementById("from_doc");
+  if (from_doc.value && from_doc.value!= "None"){
+    args.from_doc = from_doc.value    
+  }
+  console.log("from_doc", from_doc.value)
+  console.log("collection", args.collection)
 
   args.selectedModel = selectedModel
   document.querySelector(".loading-message").style = "display: flex;"
