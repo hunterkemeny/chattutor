@@ -133,7 +133,8 @@ def cqn(collection_name="test_embedding", from_doc=None):
     response with information from its database of papers and information.
     Redirects the root URL to the index.html in the static folder
     """
-
+    space_line = "<p>&nbsp;</p>"
+    space = "&nbsp;"
     load_api_keys()
     tutor = Tutor(db)
     db.load_datasource("test_embedding_basic")
@@ -142,6 +143,8 @@ def cqn(collection_name="test_embedding", from_doc=None):
     total_papers = len(docs["ids"]) 
     pprint("total_papers", total_papers)
     print("generating welcoming message...")
+
+    header = f"Chattutor{space}|{space}<a href='/cqn'>CQN database</a>{space}|{space}<a href='/cqn/cqn_reports'>Reports</a>{space}|{space}"
 
     welcoming_message = f"""
                 <p>Welcome to the Center for Quantum Networks (CQN) website! I am your Interactive Research Assistant, here to assist you in exploring the wealth of knowledge within the CQN research database. With access to a vast collection of <b>{total_papers}</b> research papers, I am equipped to provide insightful and accurate responses to your queries.</p>
@@ -178,21 +181,45 @@ def cqn(collection_name="test_embedding", from_doc=None):
         models_to_try = ["gpt-3.5-turbo"])
 
 
-    if from_doc:
-        db.load_datasource("cqn_reports")
+    if collection_name == "cqn_reports" and from_doc:
+        welcoming_message = f"<p>Welcome to the Center for Quantum Networks (CQN) website! I am your Interactive Research Assistant.</p>"
+        db.load_datasource(collection_name)
         docs = db.get_doc_list()
         for doc in docs:
             if doc["doc"] == from_doc:
-                welcoming_message = doc.get("summary", "")
-                
+                dockey = doc["docname"]
+                doctitle = doc['title']
+                published = doc["published"]
+                summary = doc.get("summary", "")
+                welcoming_message+= f"<p>I am here to assist you in exploring the content of <b>{doctitle}</b>, published on {published}.</p>{space_line}"
+                if summary:
+                    welcoming_message+=f"<p>{summary}</p>"
+                break
+            
     elif collection_name == "cqn_reports":
-        welcoming_message = "You are exploring all reports from the CQN"
+        db.load_datasource(collection_name)
+        docs = db.get_doc_list()
+        welcoming_message = f"<p>Welcome to the Center for Quantum Networks (CQN) website! I am your Interactive Research Assistant.</p>"
+        welcoming_message+= "<p>I am here to assist you in exploring the content of the CQN reports. "
+        welcoming_message+= f"The following is the list of the uploaded reports I can help you with:</p>{space_line}"
+        docs_list_html = ""
+        for doc in docs:
+            dockey = doc["docname"]
+            doctitle = doc['title']
+            published = doc["published"]
+            doc_html =f"<li><a href=\"/cqn/{collection_name}/{dockey}\">{doctitle}</a> - {published}<br>"
+            doc_html+=doc['summary']
+            doc_html+="</li>\n"
+            docs_list_html+=doc_html
+        welcoming_message+=f"<ul>{docs_list_html}</ul>"
+        welcoming_message+=f"{space_line}<p>Questions will be answered using all the documents listed before. You can also click on the title of any report to narrow down the answer to its content.</p>"
 
     return flask.render_template(
         "cqn.html", 
         welcoming_message=welcoming_message,
         collection_name=collection_name,
         from_doc=from_doc,
+        header=header,
     )
 
 

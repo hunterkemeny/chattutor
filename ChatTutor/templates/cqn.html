@@ -21,7 +21,7 @@
                 <header class="msger-header">
 
                   <div class="msger-header-title">
-                    <i class="fas fa-comment-alt"></i> <span>ChatTutor</span>
+                    <i class="fas fa-comment-alt"></i> <span>{{header|safe}}</span>
                       <a href="display_db.html" style="color: var(--left-msg-txt)">See db</a>
                       <span id="addUrl">Add URL</span>
                   </div>
@@ -102,16 +102,26 @@
           <nav class="real-menu" role="navigation">
                 <section>
                     <div class="conainer col">
-                        <h2>Settings</h2>
+                        <a href="/">Chattutor Main page</a>
+                    </div>
+                </section>
+                <section>
+                    <div class="conainer col">
                         <h1>Center for Quantum Networks</h1>
-                        <a href="/">Main page</a>
                     </div>
                 </section>
                 <section>
                     <div class="container col">
                         <p>
                             <a href="/cqn">Chattutor / CQN database</a>
-                        </p>                        
+                        </p> 
+                    </div>
+                </section>
+                <section>
+                    <div class="container col">
+                        <p>
+                            <a href="/cqn/cqn_reports">Chattutor / CQN Reports</a>
+                        </p>                            
                         <div id="collection_name_doc"></div>
                         <input type="hidden" name="from_doc" id="from_doc" value="{{from_doc}}"></div>
                         <input type="hidden" name="collection_name" id="collection_name" value="{{collection_name}}"></div>
