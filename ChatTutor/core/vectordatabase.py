@@ -79,7 +79,7 @@ class VectorDatabase:
         else:
             self.client = chromadb.PersistentClient(path=self.path)
 
-    def simple_gpt(self):
+    def get_doc_list(self):
         docs = self.datasource.get(include=["metadatas"]  )
         metadatas = docs["metadatas"]
         documents = {}
