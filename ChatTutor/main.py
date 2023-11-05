@@ -11,7 +11,7 @@ from core.extensions import (
     stream_text,
 )  # Importing the database object from extensions module
 from core.tutor import Tutor
-from core.tutor import cqn_system_message, default_system_message, interpreter_system_message
+from core.tutor import cqn_reports_system_message, cqn_system_message, default_system_message, interpreter_system_message
 import json
 import time
 import os
@@ -123,9 +123,10 @@ def index():
     """
     return redirect(url_for("static", filename="index.html"))
 
-
-@app.route("/cqn")
-def cqn():
+@app.route("/cqn/<string:collection_name>", methods=["POST", "GET"])
+@app.route("/cqn/<string:collection_name>/<string:from_doc>", methods=["POST", "GET"])
+@app.route("/cqn", methods=["POST", "GET"])
+def cqn(collection_name="test_embedding", from_doc=None):
     """
     Serves the landing page of the web application which provides
     the ChatTutor interface. Users can ask the Tutor questions and it will
@@ -177,8 +178,18 @@ def cqn():
         models_to_try = ["gpt-3.5-turbo"])
 
 
+    if from_doc:
+        db.load_datasource("cqn_reports")
+        docs = db.get_doc_list()
+        for doc in docs:
+            if doc["doc"] == from_doc:
+                welcoming_message = doc.get("summary", "")
+
     return flask.render_template(
-        "cqn.html", welcoming_message=welcoming_message
+        "cqn.html", 
+        welcoming_message=welcoming_message,
+        collection_name=collection_name,
+        from_doc=from_doc,
     )
 
 
@@ -223,7 +234,7 @@ def ask():
     """
     data = request.json
     conversation = data["conversation"]
-    collection_name = data.get("collection")
+    collection_name = data.get("collection", None)
     collection_desc = data.get("description")
     multiple = data.get("multiple")
     from_doc = data.get("from_doc")
@@ -232,11 +243,21 @@ def ask():
         selected_model = 'gpt-3.5-turbo-16k'
     # TEMP CHANGE
     selected_model = 'gpt-4'
-    print('SELECTED MODEL:', selected_model)
-    print(collection_name)
+    print("beggining main.ask")
+    print('selected_model:', selected_model)
+    print("collection_name", collection_name)
     # Logging whether the request is specific to a document or can be from any document
     chattutor = Tutor(db)
-    if collection_name:
+    
+    if "cqn_reports" in collection_name:
+        chattutor = Tutor(db, system_message=cqn_reports_system_message)
+        chattutor.add_collection("cqn_reports", "explore reports")
+    
+    elif "test_embedding" in collection_name:
+        chattutor = Tutor(db, system_message=cqn_system_message)
+        chattutor.add_collection("test_embedding", "CQN papers")
+
+    elif collection_name:
         if multiple == None:
             name = collection_desc if collection_desc else ""
             chattutor.add_collection(collection_name, name)
@@ -366,15 +387,26 @@ def compile_chroma_db():
     return "Chroma db created successfully", 200
 
 
+@app.route("/get_queue_progress")
+def get_queue_progress():
+    from background.queue import get_progress
+    progress = get_progress()
+    pprint("get_queue_progress",progress )
+    return jsonify(progress)
+
+
 @app.route("/upload_data_to_process", methods=["POST"])
 def upload_data_to_process():
+    background = request.form.get("background", False)
+
     file = request.files.getlist("file")
-    print(file)
-    data = request.form
-    desc = data["name"].replace(" ", "-")
+    desc = request.form.get("name", "").replace(" ", "-")
     if len(desc) == 0:
         desc = "untitled" + "-" + get_random_string(5)
     resp = {"collection_name": False}
+    collection_name = request.form.get("collection_name", "")
+
+    
     print("File,", file)
     if file[0].filename != "":
         files = []
@@ -384,12 +416,21 @@ def upload_data_to_process():
         texts = read_filearray(files)
         # Generating the collection name based on the name provided by user, a random string and the current
         # date formatted with punctuation replaced
-        collection_name = generate_unique_name(desc)
+        if not collection_name: collection_name = generate_unique_name(desc)
 
-        db.load_datasource(collection_name)
-        db.add_texts(texts)
+        pprint("collection_name", collection_name)
+        pprint("number of blocks", len(texts))
+        pprint("sample of text (texts[0])", texts[0] )
+
+        if background:
+            from background.queue import add_texts_to_collection
+            add_texts_to_collection(collection_name,texts)
+        else:
+            db.load_datasource(collection_name)
+            db.add_texts(texts)
         resp["collection_name"] = collection_name
 
+    pprint(resp)
     return jsonify(resp)
 
 
@@ -418,12 +459,48 @@ def upload_data_from_drop():
 
     return jsonify(resp)
 
+
+@app.route("/delete_doc_from_collection/<string:collection_name>/<string:doc>", methods=["GET"])
+def delete_doc_from_collection(collection_name, doc):
+    if collection_name == "cqn_reports":
+        pprint("collection_name", collection_name)
+        pprint("doc", doc)
+        db.load_datasource(collection_name)    
+        db.datasource.delete(where={"doc": doc})
+    return redirect(url_for("cqn"))
+
 @app.route("/delete_uploaded_data", methods=["POST"])
 def delete_uploaded_data():
     data = request.json
     collection_name = data["collection"]
+
+    # dont delete cqn_reports
+    if collection_name in {"cqn_reports"}:
+        return jsonify({"deleted": ""})    
+
+
     db.delete_datasource_chroma(collection_name)
     return jsonify({"deleted": collection_name})
+
+@app.route("/get_doc_list", methods=["POST"])
+def get_doc_list():
+    for i_try in range(3):
+        try:
+            data = request.json
+            collection_name = data["collection_name"]
+            db.load_datasource(collection_name)    
+            docs = db.get_doc_list()
+            # pprint("get_doc_list")
+            # pprint("collection_name", collection_name)
+            # pprint("docs", docs)
+            return jsonify(docs)
+        except Exception as e:
+            if i_try == 2:
+                import traceback
+                traceback.print_exc() 
+                time.sleep(1)
+            pass
+    return jsonify([])
 
 @app.route("/upload_site_url", methods=["POST"])
 def upload_site_url():
