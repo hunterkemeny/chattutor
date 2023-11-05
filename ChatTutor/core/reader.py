@@ -1,3 +1,4 @@
+from core.tutor import get_number_of_tokens, truncate_to_x_number_of_tokens
 from nice_functions import pprint
 from core.definitions import Doc, Text
 from typing import List
@@ -158,7 +159,15 @@ def extract_metadata_from_pdf(pdfReaderObject) -> dict:
     """
     returns dict with title, authors, published, links and summary keys
     """
-    first_page = pdfReaderObject.pages[0].extract_text()
+    first_text =""
+    for i in range(len(pdfReaderObject.pages)):
+        first_text = first_text + pdfReaderObject.pages[i].extract_text()
+        number_of_tokens = get_number_of_tokens(first_text)
+        if number_of_tokens > 1000:
+            first_text = truncate_to_x_number_of_tokens(first_text, 1000)
+            break
+
+
     from core.openai_tools import simple_gpt
     system_message = """
     You will receive the first page of a PDF.
@@ -173,7 +182,7 @@ def extract_metadata_from_pdf(pdfReaderObject) -> dict:
         - if information is missing, keep the lavel but just write None
         - start the line with the extracted information (dont include the label)
     """
-    answer = simple_gpt(system_message=system_message, user_message=first_page)
+    answer = simple_gpt(system_message=system_message, user_message=first_text)
     answer = {
         el[0:el.find(":")].replace("\"", ""): el[el.find(": ")+1:].strip()
         for el in answer.split("\n") 
