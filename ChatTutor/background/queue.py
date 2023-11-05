@@ -35,7 +35,7 @@ def add_to_queue(command, args, comment="", id=""):
     
 def add_texts_to_collection(collection_name,texts):
     comment = rf"add_texts_to_collection, {collection_name}, {len(texts)}"
-    divide_task_in = 10
+    divide_task_in = 20
     total = len(texts)
     while  reversed(texts):
         texts_to_add = []
