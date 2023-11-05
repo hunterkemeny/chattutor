@@ -1,5 +1,5 @@
 from copy import deepcopy
-from pprint import pp
+from core.openai_tools import simple_gpt
 import sys 
 sys.path.insert(0, ".")
 
@@ -29,28 +29,6 @@ def print_summary_basic():
     db.load_datasource("test_embedding_basic")
     docs = db.datasource.get(limit=10)
     pprint(docs)
-
-
-def simple_gpt(system_message, user_message):
-    models_to_try = ["gpt-3.5-turbo-16k", "gpt-3.5-turbo"]
-    for model_to_try in models_to_try:
-        try:
-            response = openai.ChatCompletion.create(
-                model=model_to_try,
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": user_message},
-                ],
-                temperature=1,
-                frequency_penalty=0.0,
-                presence_penalty=0.0,
-                # stream=True,
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            print(red(model_to_try), "FAILED!")
-            if model_to_try == models_to_try[-1]: raise(e)
-
 
 def reduce_synopsis(synopsis, to_number_of_tokens):
     answer = simple_gpt(
