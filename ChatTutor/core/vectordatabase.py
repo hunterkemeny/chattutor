@@ -166,8 +166,9 @@ class VectorDatabase:
         """
         pprint("add_texts_chroma", rf"adding {len(texts)} pieces of text...")
         pprint("collection name", self.datasource.name)
+        import time, random
         self.datasource.add(
-            ids=        [get_hash(text.get_text())  for text in texts],
+            ids=        [get_hash(time.time()*random.random())  for text in texts],
             metadatas=  [text.get_metadata() for text in texts],
             documents=[ text.get_text() for text in texts],
         )
