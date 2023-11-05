@@ -351,7 +351,7 @@ class Tutor:
                     if cqn_reports_bot:
                         self.embedding_db.load_datasource(coll_name)
                         query_limit = 10 
-                        process_limit = 5 # each basic entry has close to 100 tokens
+                        process_limit = 10 # each basic entry has close to 100 tokens
                         show_limit = 1 
                     elif coll_name == "test_embedding" and required_level_of_information == "basic":
                         self.embedding_db.load_datasource(f"{coll_name}_basic")
