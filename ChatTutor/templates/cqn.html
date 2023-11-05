@@ -110,19 +110,11 @@
                 <section>
                     <div class="container col">
                         <p>
-                            Use the form below to upload files you want the model to learn
-                            from. Upload multiple files as zip archives or pdfs/txts, or simply drag and drop them
-                            all at once.
-                        </p>
-                        <p>
-                            Each tuple of files you upload will be saved temporarily as a collection
-                            and removed from our database when you reload your page.
-                        </p>
-                        <p>
-                            If you upload multiple collections, you can use the select below
-                            to select the selection you want the model to learn from for it to
-                            be able to respond to you.
-                        </p>
+                            <a href="/cqn">Chattutor / CQN database</a>
+                        </p>                        
+                        <div id="collection_name_doc"></div>
+                        <input type="hidden" name="from_doc" id="from_doc" value="{{from_doc}}"></div>
+                        <input type="hidden" name="collection_name" id="collection_name" value="{{collection_name}}"></div>
                     </div>
                 </section>
                 <section>    
@@ -131,14 +123,30 @@
                     <div class="pswd-inputarea col">
                         <form id="uploadFileForm" class="no-enter" enctype="multipart/form-data">
                                 <div class="input-group">
+                                    <div id="queue_status"></div>
                                     <label for="files">Select file/files</label>
                                     <!-- <input type="file" style="width: 100% !important; margin-bottom: 20px" id="Zip File" name="file" class="msger-input"> -->
                                     <div class="area">
                                         <span>Upload File</span>
                                         <input type="file" class="multiple-upload" id="upload" name="file" multiple/>
                                     </div>
-                                    <label for="name">Set a name</label>
-                                    <input type="text" style="width: 100% !important" id="name" name="name" class="pswd-input">
+                                    <div class="container col">
+                                        <h3>arXiv code</h3>
+                                        <input type="text" value="" id="arXiv" name="arXiv">
+                                    </div>
+                                    <div class="container col">
+                                        <h3>Select collection</h3>
+                                        <select id="collection_name" name="collection_name">
+                                            <option value="cqn_reports" selected>CQN Reports</option>
+                                            <option value="test_embedding">CQN Database</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <input type="checkbox" name="background" value="background" checked>Process in Background
+                                    </div>                                    
+                                    <!-- <label for="name">Set a name</label>
+                                    <input type="text" style="width: 100% !important" id="name" name="name" class="pswd-input"> -->
                                 </div>
                         </form>
                         <div class="row">
@@ -157,16 +165,16 @@
                         </div>
                     </div>
 
-                </section>        
-                <section>
+</section>        
+                <section style="visibility: hidden;">
                     <div class="container col">
                         <h3>Select collection</h3>
                         <select id="selectUploadedCollection">
                         </select>
                     </div>
-                </section>
+                </section>        
 
-                <section>
+                <section style="visibility: hidden;">
                     <div class="container col">
                         <h3>Select Model</h3>
                         <select id="modelDropdown">
