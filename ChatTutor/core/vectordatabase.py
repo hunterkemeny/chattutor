@@ -7,6 +7,7 @@ from core.definitions import Text
 from deeplake.core.vectorstore import VectorStore
 import openai
 import requests
+import utils.config as config
 import json
 import os
 
@@ -80,6 +81,14 @@ class VectorDatabase:
             self.client = chromadb.PersistentClient(path=self.path)
 
     def get_doc_list(self):
+        cache_name = f"{self.datasource.name}_doc_list"
+        doc_list = config.load(cache_name, default={}, ask=False)
+        if doc_list == {}:
+            return self.doc_list_refresh()
+        return doc_list
+
+    def doc_list_refresh(self):
+        cache_name = f"{self.datasource.name}_doc_list"    
         docs = self.datasource.get(include=["metadatas"]  )
         metadatas = docs["metadatas"]
         documents = {}
@@ -92,7 +101,9 @@ class VectorDatabase:
             metadata.pop("page", None)
             metadata.pop("name", None)
             documents[key] = metadata
-        return list(documents.values())
+        doc_list = list(documents.values())
+        config.save(cache_name, doc_list)
+        return doc_list
 
 
     def load_datasource(self, name):
@@ -172,6 +183,7 @@ class VectorDatabase:
             metadatas=  [text.get_metadata() for text in texts],
             documents=[ text.get_text() for text in texts],
         )
+        self.doc_list_refresh()        
 
     def query(self, prompt, n_results, from_doc, metadatas=False, distances=False):
         """Querying the database based on the database provider
