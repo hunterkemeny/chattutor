@@ -1,3 +1,4 @@
+from nice_functions import pprint
 from core.definitions import Doc, Text
 from typing import List
 import os
@@ -93,7 +94,7 @@ def read_filearray(files):
     texts = []
 
     for file in files:
-        print("AAAAAAA")
+        print("read_filearray")
         doc = Doc(docname=file[1], citation="", dockey=file[1])
         print(file[1])
         try:
@@ -106,7 +107,8 @@ def read_filearray(files):
 
             texts.extend(new_texts)
         except Exception as e:
-            print(e.__str__())
+            import traceback
+            traceback.print_exc() 
             pass
     return texts
 
@@ -152,8 +154,38 @@ def parse_notebook(path: str, doc: Doc, chunk_chars: int, overlap: int):
         return texts_from_str(text_str, doc, chunk_chars, overlap)
 
 
+def extract_metadata_from_pdf(pdfReaderObject) -> dict:
+    """
+    returns dict with title, authors, published, links and summary keys
+    """
+    first_page = pdfReaderObject.pages[0].extract_text()
+    from core.openai_tools import simple_gpt
+    system_message = """
+    You will receive the first page of a PDF.
+    Extract the following information:
+    - "title": The paper title
+    - "authors": The list of authors of the article
+    - "published": The publishing date 
+    - "links": Links to the document if any
+    - "summary": A 300 words summary of this page
+    Your answer will be 5 lines: 
+        - one line per information extracted
+        - if information is missing, keep the lavel but just write None
+        - start the line with the extracted information (dont include the label)
+    """
+    answer = simple_gpt(system_message=system_message, user_message=first_page)
+    answer = {
+        el[0:el.find(":")].replace("\"", ""): el[el.find(": ")+1:].strip()
+        for el in answer.split("\n") 
+    }
+    for k,v in answer.items():
+        if v == "None": answer[k] = None        
+    return answer
+
+
+
 def parse_pdf(
-    file_contents: str, doc: Doc, chunk_chars: int, overlap: int
+    file_contents: str, doc: Doc, chunk_chars: int, overlap: int, extract_metadata=True
 ) -> List[Text]:
     """Parses a pdf file and generates texts from its content.
 
@@ -173,28 +205,44 @@ def parse_pdf(
     split = ""
     pages: List[str] = []
     texts: List[Text] = []
-    for i, page in enumerate(pdfReader.pages):
+    chunk_counter = 1
+    number_of_pages = len(pdfReader.pages)
+
+    if extract_metadata:
+        metadata = extract_metadata_from_pdf(pdfReader) 
+        doc.authors =   metadata.get("authors", None)
+        if doc.authors and isinstance(doc.authors, list): doc.authors = ", ".join(doc.authors)
+        doc.published = metadata.get("published", None)
+        doc.title =     metadata.get("title", None)
+        doc.summary =   metadata.get("summary", None)
+        if doc.title: doc.docname = doc.title
+
+    section = ""
+    print("")
+    print("number_of_pages", number_of_pages)
+    for page_counter, page in enumerate(pdfReader.pages):
+        
         split += page.extract_text()
-        pages.append(str(i + 1))
+        pages.append(str(page_counter + 1))
 
         while len(split) > chunk_chars:
-            # pretty formatting of pages (e.g. 1-3, 4, 5-7)
-            pg = "-".join([pages[0], pages[-1]])
 
+            # pretty formatting of pages (e.g. 1-3, 4, 5-7)
+            pg = rf"{page_counter+1}/{number_of_pages}"
             # print(split[:chunk_chars])
             text = [
                 Text(
-                    text=split[:chunk_chars], name=f"{doc.docname} pages {pg}", doc=doc
+                    text=split[:chunk_chars], chunk=chunk_counter, page=page_counter+1, name=f"{doc.docname} - page {pg}", doc=doc
                 )
             ]
+            chunk_counter+=1
             # database.add_texts_chroma(text)
             texts.append(text[0])
             split = split[chunk_chars - overlap :]
-            pages = [str(i + 1)]
     if len(split) > overlap:
-        pg = "-".join([pages[0], pages[-1]])
+        pg = rf"{page_counter+1}/{number_of_pages}"
         texts.append(
-            Text(text=split[:chunk_chars], name=f"{doc.docname} pages {pg}", doc=doc)
+            Text(text=split[:chunk_chars],chunk=chunk_counter, page=page_counter+1, name=f"{doc.docname} - page {pg}", doc=doc)
         )
     # pdfFileObj.close()
     return texts
