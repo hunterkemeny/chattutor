@@ -184,6 +184,9 @@ def cqn(collection_name="test_embedding", from_doc=None):
         for doc in docs:
             if doc["doc"] == from_doc:
                 welcoming_message = doc.get("summary", "")
+                
+    elif collection_name == "cqn_reports":
+        welcoming_message = "You are exploring all reports from the CQN"
 
     return flask.render_template(
         "cqn.html", 
