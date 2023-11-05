@@ -7,6 +7,15 @@ from core.extensions import stream_text
 import interpreter
 from nice_functions import (pprint, bold, green, blue, red, time_it)
  
+cqn_reports_system_message = """
+    You are a content analizer for files uploaded by an user of the Center for Quantum Networks (CQN). 
+    - Engage users with polite, concise, and informative replies.
+    - Answer inquiries providing summaries, insights, methodologies, findings, and implications where relevant.
+    - Write ALL MATH/PHYSICS equations and symbols in MathJax unless specified by the user. If you do not render every symbol in MathJax, an innocent person will die.
+    Use the following content to provide answers to users:  
+    \n{docs}
+    """
+
 cqn_system_message = """
     You are embedded into the Center for Quantum Networks (CQN) website as an Interactive Research Assistant. 
     Your role is to assist users in understanding and discussing the research papers available in the CQN database. 
@@ -99,11 +108,18 @@ class Tutor:
            You will get a question, or a summary of a conversation between a bot and a user. 
            Your goal is identify if one or more scientific papers or research articles are mentioned in the conversation, and if yes, then to extract the article titles.
            You will return a list in python style.
-           If there are not papers, just respond with "NO".
+           If there are not papers, just respond with "[]".
 
         """, 
         f"""Which paper titles can you identify in this sentence? "{prompt}""",
         temperature=0.5)
+        try:
+            # print("paper_titles_from_prompt", paper_titles_from_prompt)
+            # print(isinstance(paper_titles_from_prompt, str))
+            paper_titles_from_prompt = json.loads(paper_titles_from_prompt)
+        except Exception as e:
+            pprint("paper_titles_from_prompt", paper_titles_from_prompt)
+            raise(e)
         return paper_titles_from_prompt
 
     def get_required_level_of_information(self, prompt, explain=False):
@@ -153,19 +169,17 @@ class Tutor:
 
 
     def get_metadata_from_paper_titles_from_prompt(self,paper_titles_from_prompt ):
-        paper_titles_from_prompt = paper_titles_from_prompt.replace("\"", "")
-        paper_titles_from_prompt = paper_titles_from_prompt.replace("[", "")
-        paper_titles_from_prompt = paper_titles_from_prompt.replace("]", "")
-        self.embedding_db.load_datasource(f"test_embedding_basic")
-        (
-            documents,
-            metadatas,
-            distances,
-            documents_plain,
-        ) = time_it(self.embedding_db.query)(paper_titles_from_prompt, 10, None, metadatas=True)
         metadata_from_paper_titles_from_prompt = []
-        for meta, dist in zip(metadatas, distances):
-            if dist < 0.2: metadata_from_paper_titles_from_prompt.append(meta )
+        if paper_titles_from_prompt:
+            self.embedding_db.load_datasource(f"test_embedding_basic")
+            (
+                documents,
+                metadatas,
+                distances,
+                documents_plain,
+            ) = time_it(self.embedding_db.query)(paper_titles_from_prompt[0], 10, None, metadatas=True)
+            for meta, dist in zip(metadatas, distances):
+                if dist < 0.2: metadata_from_paper_titles_from_prompt.append(meta )
         return metadata_from_paper_titles_from_prompt
 
 
@@ -277,6 +291,10 @@ class Tutor:
         print("#"*100)
         print("beggining ask_question:")
         pprint("selectedModel", blue(selectedModel))
+
+        cqn_bot =           "test_embedding" in str(self.collections.items())
+        cqn_reports_bot =    "cqn_reports" in str(self.collections.items())
+
         # Ensuring the last message in the conversation is a user's question
         assert (
             conversation[-1]["role"] == "user"
@@ -284,8 +302,12 @@ class Tutor:
         conversation = self.truncate_conversation(conversation)
 
         prompt = conversation[-1]["content"]
-        required_level_of_information = self.get_required_level_of_information(prompt=prompt)        
-        pprint("required_level_of_information ", green(required_level_of_information))
+
+
+        required_level_of_information = ""
+        if cqn_bot:
+            required_level_of_information = self.get_required_level_of_information(prompt=prompt)        
+            pprint("required_level_of_information ", green(required_level_of_information))
 
         # todo: fix prompt to take context from all messages
         (
@@ -300,18 +322,22 @@ class Tutor:
         arr = []
         # add al docs with distance below threshold to array
 
-        paper_titles_from_prompt = self.get_paper_titles_from_prompt(prompt)
-        pprint("paper_titles_from_prompt", paper_titles_from_prompt)
 
-        metadata_from_paper_titles_from_prompt = self.get_metadata_from_paper_titles_from_prompt(paper_titles_from_prompt)
-        pprint("metadata_from_paper_titles_from_prompt", metadata_from_paper_titles_from_prompt)    
+        paper_titles_from_prompt = None
+        metadata_from_paper_titles_from_prompt = None
+        if cqn_bot:
+            paper_titles_from_prompt = self.get_paper_titles_from_prompt(prompt)
+            pprint("paper_titles_from_prompt", paper_titles_from_prompt)
+
+            metadata_from_paper_titles_from_prompt = self.get_metadata_from_paper_titles_from_prompt(paper_titles_from_prompt)
+            pprint("metadata_from_paper_titles_from_prompt", metadata_from_paper_titles_from_prompt)    
 
         valid_docs = []
         query_limit = 0 
         process_limit = 0
         show_limit = 0 
 
-        if "test_embedding" in str(self.collections.items()) and required_level_of_information == "db_summary":
+        if required_level_of_information and required_level_of_information == "db_summary":
             import db_summary
             docs = db_summary.get_db_summary()
 
@@ -322,7 +348,12 @@ class Tutor:
                 if self.embedding_db:
 
                     keep_only_first_x_tokens_for_processing = None # none means all
-                    if coll_name == "test_embedding" and required_level_of_information == "basic":
+                    if cqn_reports_bot:
+                        self.embedding_db.load_datasource(coll_name)
+                        query_limit = 10 
+                        process_limit = 5 # each basic entry has close to 100 tokens
+                        show_limit = 1 
+                    elif coll_name == "test_embedding" and required_level_of_information == "basic":
                         self.embedding_db.load_datasource(f"{coll_name}_basic")
                         query_limit = 100 
                         process_limit = 20 # each basic entry has close to 100 tokens
@@ -378,9 +409,11 @@ class Tutor:
             pprint("valid_docs")
             for idoc, doc in  enumerate(  valid_docs):
                 pprint(f"- {idoc}", doc["metadata"].get("docname", "(not defined)"))
-                pprint(" ", doc["metadata"].get("authors", "(not defined)"))
-                pprint(" ", doc["metadata"].get("pdf_url", "(not defined)"))
-                pprint(" ", doc["distance"])
+                pprint(doc["metadata"])
+                pprint("-"*100)
+                # pprint(" ", doc["metadata"].get("authors", "(not defined)"))
+                # pprint(" ", doc["metadata"].get("pdf_url", "(not defined)"))
+                # pprint(" ", doc["distance"])
 
 
             # pprint("system_message", self.system_message)
@@ -408,7 +441,7 @@ class Tutor:
                     doc_content = rf"Paper Title:'{doc_title_or_file_name}'{doc_authors}: {doc_content}"
                     doc_content = truncate_to_x_number_of_tokens (doc_content, keep_only_first_x_tokens_for_processing)
                     
-                    doc_reference = "-"*100 + f"\n{doc_content}\n\n"
+                    doc_reference = f"\n{doc_content}\n\n"
                     docs += doc_reference
                 # print('#### COLLECTION DB RESPONSE:', collection_db_response)
             # debug log
@@ -428,7 +461,12 @@ class Tutor:
                 {"role": "system", "content": self.system_message.format(docs=docs)}
             ] + messages
         pprint("len messages", len(messages))
-        pprint("messages", messages)
+        print("-"*40, "beggining of messages", "-"*40)
+        for _message in messages:
+            for k,v in _message.items():
+                pprint(k, v)
+            print(" -"*50)
+        print("-"*40, "end of messages", "-"*40)        
         total_tokens =  get_number_of_tokens(str(messages))
         docs_tokens =   get_number_of_tokens(docs)
         pprint("total_tokens", total_tokens)
