@@ -497,6 +497,7 @@ def delete_doc_from_collection(collection_name, doc):
         pprint("doc", doc)
         db.load_datasource(collection_name)    
         db.datasource.delete(where={"doc": doc})
+        db.doc_list_refresh()
     return redirect(url_for("cqn"))
 
 @app.route("/delete_uploaded_data", methods=["POST"])
