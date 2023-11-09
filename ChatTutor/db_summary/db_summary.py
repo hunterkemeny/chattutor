@@ -16,6 +16,44 @@ from core.extensions import db
 from core.openai_tools import load_api_keys
 import openai
 
+def print_summary_reports():
+    load_api_keys()
+    db.init_db()
+    # db.client.delete_collection("cqn_reports")
+    # return 
+    db.load_datasource("cqn_reports")
+    # db.datasource.add(
+    #     ids=["1","2","3"],
+    #     documents=["bernardo", "juan", "pedro"]
+    # )
+    # db.load_datasource("test_embedding")
+    text = ""
+    # text = "the dynamics of the emitter. We will use time-independent B. Time-independent perturbation theory (TIPT) Recall that time-independent perturbation theory (hereafter"
+    text = "Tomography for Characterizing Noisy and Lossy Photonic Channels (Bash)"
+    # text = "Optical nonlinearities are essent"
+    if text:
+        r = db.datasource.query(query_texts=[text], n_results=10, include=["metadatas", "documents", "distances"])
+        distances, docs = r["documents"][0], r["distances"][0]
+        arr = []
+        for doc, distance in  zip(docs, distances):
+            arr.append(
+                {
+                    "doc": doc,
+                    "distance": distance,
+                }
+            )            
+        sorted_docs = sorted(arr, key=lambda el: el["distance"])
+        pprint(arr[0:10])
+
+
+    if not text:
+        db.load_datasource("cqn_reports")
+        r = db.datasource.get(limit=3000)["documents"]
+        for doc in r:
+            print("-"*100)
+            print(doc)
+        print(len(r))        
+
 def print_summary_medium():
     load_api_keys()
     db.init_db()
