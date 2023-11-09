@@ -1,8 +1,6 @@
 # ChatTutor
 
-note from Dirk - What happens if we don’t act? Generative AI could mark the greatest revolution in education since the era of the Enlightenment. A transformation will happen, one way or the other.  What is still undecided is is *how* this revolution will happen: will it be open, equitable, .. will it put science and openness first? Will it be open-access? Will these educational tools be based in free societies?  If we act now, we have a first-mover advantage to shape the future. 
-
-The goal with Chattutor going forward is to develop an AI-agent capable of teaching and bringing together resaerch communictions, ranging from uninformed learners to industry professionals, undergraduates, and graduate students. The goal is for this AI-agent to possess deep domain-specific and hierarchical and trust-weighted knowledge. 
+The goal of Chattutor is to develop an AI-agent capable of teaching and bringing together resaerch communictions, ranging from uninformed learners to industry professionals, undergraduates, and graduate students. The goal is for this AI-agent to possess deep domain-specific and hierarchical and trust-weighted knowledge. 
 
 ## Overview
 This project is the web application for ChatTutor.
@@ -17,7 +15,7 @@ have the following format:
 
 ```yaml
 env_variables:
-    CHATUTOR_GCP: TRUE
+    CHATUTOR_GCP: false
     OPENAI_API_KEY: <>
 ```
 
@@ -26,18 +24,18 @@ The project file tree should look like this:
 ```
 root_folder (named chattutor)
 |- ChatTutor/
-      |- requirements.txt
       |- ... (other files and folders)
       |- .env.yaml (the file you added)
 |- db/
       |- ...
 |- README.md
+|- requirements.txt
 ```
 
 2. **Setup Virtual Environment and Install Dependencies**
 ```sh
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   python -m venv .venv       # python3 -m venv .venv
+   source .venv/bin/activate  # On Windows use `venv\Scripts\activate`
    pip install -r requirements.txt
 ```
 Alternatively, use docker:
@@ -45,6 +43,7 @@ Alternatively, use docker:
 
 3. **Run the flask application**
 ```
+   cd ChatTutor
    python main.py
 ```
 
@@ -101,4 +100,4 @@ Open a web browser and navigate to http://127.0.0.1:5000/ to interact with the a
 To install Chattutor in a jupyter book, cd into chattutor_setup directory containing chattutor.css	chattutor.html	chattutor.js	install.py into the root directory. Run  "python chattutor_setup/install.py" to put chattutor code into the files located by the script. 
 
 ## Acknowledgements
-Chattutor V1 was developed by Dirk Englund for the Spring 6.2410 course "Quantum Systems Engineering" at MIT.  It was further developed with Hank Stennes, H. Chuck Choi, and Hunter Kemeny in the summer of 2023, and late in the summer they were joined by Aatmik Mallya, Adrian Alexandru Ariton, and a growing team of developers under guidance by Hunter with a cohort of key developers (see github commit).
+Chattutor V1 was developed by Dirk Englund for the Spring 6.2410 course "Quantum Systems Engineering" at MIT.  It was further developed with Hank Stennes, Hyeongrak "Chuck" Choi, and Hunter Kemeny in the summer of 2023, and late in the summer they were joined by Aatmik Mallya, Adrian Alexandru Ariton, and a growing team of developers under guidance by Hunter with a cohort of key developers (see github commit).
