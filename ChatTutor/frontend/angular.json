@@ -107,7 +107,7 @@
           "options": {
             "singleBundle": true,
             "outputPath": "dist/elements",
-            "index": "src/index.html",
+            "index": "src/index.element.html",
             "main": "src/main.element.ts",
             "tsConfig": "tsconfig.element.json"
           },
