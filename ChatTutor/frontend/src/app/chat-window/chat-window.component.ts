@@ -1,7 +1,7 @@
-import {Component, EventEmitter, HostBinding, HostListener, Input, OnInit, Output} from '@angular/core';
-import {Paper} from 'app/models/paper.model';
-import {DataMessage, Message} from "../models/message.model";
-import {ChatTutor} from "../models/chattutor.model";
+import { Component, EventEmitter, HostBinding, HostListener, Input, OnInit, Output } from '@angular/core';
+import { Paper } from 'app/models/paper.model';
+import { DataMessage, Message } from "../models/message.model";
+import { ChatTutor } from "../models/chattutor.model";
 import { WStatus } from 'app/models/windowstatus.enum';
 
 @Component({
@@ -9,15 +9,15 @@ import { WStatus } from 'app/models/windowstatus.enum';
     templateUrl: './chat-window.component.html',
     styleUrls: ['./chat-window.component.css']
 })
-export class ChatWindowComponent implements OnInit{
+export class ChatWindowComponent implements OnInit {
     messages: Message[] = [];
     @Input() collections: string[] | undefined = ['test_embedding']
     @Input() restrictToDocument: any = undefined
     @Input() type: any
+    @Input() endpoint: string = "/ask"
     documentInfo: any = undefined
     loadingFiles: boolean = false
     status: WStatus = WStatus.Idle
-    endpoint: string = "/ask"
 
     pleaseStopGeneratingConvo: boolean = false
     @Input() openingMessage: string = `Hello, I am here to respond to any questions you might have about this chapter or course.\nFeel free to ask me anything!`
@@ -89,7 +89,7 @@ export class ChatWindowComponent implements OnInit{
 
         let req_init: RequestInit = {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(args)
         }
 
@@ -102,7 +102,7 @@ export class ChatWindowComponent implements OnInit{
         msg.time_created = msg.timestamp
         msg.chat_k = 'To set chat id'
         msg.clear_number = '0'
-        const response = await fetch('addtodb', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(msg)})
+        const response = await fetch('addtodb', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(msg) })
     }
 
     async onSendMessage(messageText: string) {
@@ -143,15 +143,17 @@ export class ChatWindowComponent implements OnInit{
 
             const the_messages: DataMessage[] =
                 string_value.split('\n\n')
-                .filter(Boolean)
-                .map(chunk => {
-                    let spl = null
-                    try {
-                        spl = JSON.parse(chunk.split('data: ')[1]) }
-                    catch (e) { spl = {}
-                    }
-                    return spl
-                })
+                    .filter(Boolean)
+                    .map(chunk => {
+                        let spl = null
+                        try {
+                            spl = JSON.parse(chunk.split('data: ')[1])
+                        }
+                        catch (e) {
+                            spl = {}
+                        }
+                        return spl
+                    })
             for (let message_index in the_messages) {
 
                 const message = the_messages[message_index]
@@ -250,35 +252,35 @@ export class ChatWindowComponent implements OnInit{
         }
         const response = await fetch('/upload_data_from_drop', {
             method: 'POST',
-            headers: {'Accept': 'multipart/form-data'},
+            headers: { 'Accept': 'multipart/form-data' },
             body: form_data
         })
         const coll = await response.json()
-        if(coll['message'] == 'error') {
+        if (coll['message'] == 'error') {
             this.setStatus(WStatus.UploadedContent)
-            return {message: 'error'}
+            return { message: 'error' }
         }
         if (!this.collections?.includes('files_collection')) {
             this.collections?.push('files_collection')
         }
         this.filesArray = [...this.filesArray, ...coll['files_uploaded_name']]
         this.setStatus(WStatus.UploadedContent)
-        return {message: 'success', json_obj: coll}
+        return { message: 'success', json_obj: coll }
     }
 
     async sendURLsToBackend(urls: Array<string>, collection_name: string) {
         this.setStatus(WStatus.UploadingContent)
-        let data_ = {url: urls, name: collection_name}
+        let data_ = { url: urls, name: collection_name }
         let response = await fetch('/upload_site_url', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data_)
         })
         let res_json = await response.json()
         console.log('Res_json', res_json)
-        if(res_json['message'] == 'error') {
+        if (res_json['message'] == 'error') {
             this.setStatus(WStatus.UploadedContent)
-            return {message: 'failure'}
+            return { message: 'failure' }
         }
         if (!this.collections?.includes('files_collection')) {
             this.collections?.push('files_collection')
@@ -287,39 +289,39 @@ export class ChatWindowComponent implements OnInit{
         this.urlsArray = [...this.urlsArray, ...res_json['urls']]
         this.setStatus(WStatus.UploadedContent)
 
-        return {message: 'success', json_obj: res_json}
+        return { message: 'success', json_obj: res_json }
     }
-    
+
     readonly WStatus = WStatus
 }
 
 
 function formatMessage(message: string, makeLists: boolean = true) {
     const messageArr = message.split("\n")
-  
+
     let messageStr = ""
     let listSwitch = 0
     for (let messageArrIndex in messageArr) {
-      const paragraph = messageArr[messageArrIndex]
-      if(paragraph.startsWith('- ') && makeLists) {
-        if(listSwitch === 0) {
-          messageStr += "<ul style=\"padding-left: 15px !important;\">"
+        const paragraph = messageArr[messageArrIndex]
+        if (paragraph.startsWith('- ') && makeLists) {
+            if (listSwitch === 0) {
+                messageStr += "<ul style=\"padding-left: 15px !important;\">"
+            }
+
+            messageStr += `<li><p>${paragraph.slice(2)}</p></li>`
+
+            listSwitch = 1
+
+        } else if (listSwitch === 1) {
+            messageStr += "</ul>"
+            messageStr += `<p>${paragraph}</p>`
+            listSwitch = 0
+        } else {
+            messageStr += `<p>${paragraph}</p>`
+            listSwitch = 0
         }
-  
-        messageStr += `<li><p>${paragraph.slice(2)}</p></li>`
-  
-        listSwitch = 1
-  
-      } else if (listSwitch === 1) {
-        messageStr += "</ul>"
-        messageStr += `<p>${paragraph}</p>`
-        listSwitch = 0
-      } else {
-        messageStr += `<p>${paragraph}</p>`
-        listSwitch = 0
-      }
-  
+
     }
     return messageStr
-  }
-  
+}
+
